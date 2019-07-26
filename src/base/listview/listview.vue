@@ -12,9 +12,9 @@
       </li>
     </ul>
 
-    <div class="list-shortcut" >
+    <div class="list-shortcut" @touchstart.stop.prevent="onShortcutTouchStart" @touchmove.stop.prevent="onShortcutTouchMove">
       <ul>
-        <li v-for="(item, index) in shortcutList"  class="item">{{item}}
+        <li v-for="(item, index) in shortcutList"  class="item" :class="{'current':currentIndex===index}" :data-index="index">{{item}}
         </li>
       </ul>
     </div>
@@ -23,6 +23,11 @@
 
 <script>
   import Scroll from 'base/srcoll/scroll'
+  import {getData} from 'common/js/dom'
+
+  const TITLE_HEIGHT = 30
+  const ANCHOR_HEIGHT = 18
+
   export default {
     props: {
       data: {
@@ -38,6 +43,45 @@
         return this.data.map((group) => {
           return group.title.substr(0, 1)
         })
+      }
+    },
+    data() {
+      return {
+        currentIndex: 0
+      }
+    },
+    created(){
+       this.touch = {}
+    },
+    methods: {
+      onShortcutTouchStart(e) {
+        let anchorIndex = getData(e.target, 'index')
+        let firstTouch = e.touches[0]
+        this.touch.y1 = firstTouch.pageY  //记录第一触碰的坐标
+        this.currentIndex===anchorIndex
+        this.touch.anchorIndex=anchorIndex
+        // this.$refs.listview.scrollToElement(this.$refs.listGroup[anchorIndex], 0)
+        this._scrollTo(anchorIndex)
+      },
+      onShortcutTouchMove(e) {
+        let firstTouch = e.touches[0]
+        this.touch.y2 = firstTouch.pageY
+        let delta = (this.touch.y2 - this.touch.y1) / ANCHOR_HEIGHT | 0
+        let anchorIndex = parseInt(this.touch.anchorIndex) + delta  //防止相加变字符串
+
+        this._scrollTo(anchorIndex)
+      },
+      _scrollTo(index) {
+        // if (!index && index !== 0) {
+        //   return
+        // }
+        // if (index < 0) {
+        //   index = 0
+        // } else if (index > this.listHeight.length - 2) {
+        //   index = this.listHeight.length - 2
+        // }
+        // this.scrollY = -this.listHeight[index]
+        this.$refs.listview.scrollToElement(this.$refs.listGroup[index], 0)
       }
     },
   }
