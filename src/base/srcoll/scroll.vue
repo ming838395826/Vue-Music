@@ -12,9 +12,17 @@
         type: Boolean,
         default:true
       },
+      probeType: {
+        type: Number,
+        default: 1
+      },
       data:{
         type:Array,
         default:null
+      },
+      listenScroll:{
+        type:Boolean,
+        default:false
       }
     },
     mounted(){
@@ -28,8 +36,18 @@
           return
         }
         this.scroll=new BScroll(this.$refs.wrapper,{
-            click:this.click
+            click:this.click,
+            probeType:this.probeType,
+            /* 1 滚动的时候会派发scroll事件，会截流。
+               2 滚动的时候实时派发scroll事件，不会截流。
+               3 除了实时派发scroll事件，在swipe的情况下仍然能实时派发scroll事件     */
         })
+        if(this.listenScroll){//如果需要监听
+            let me=this
+            this.scroll.on('scroll', (pos) => {
+                me.$emit('scroll', pos)
+            })
+        }
 
         this.scroll.refresh();
 			},

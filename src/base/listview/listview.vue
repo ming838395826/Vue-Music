@@ -1,5 +1,5 @@
 <template>
-  <scroll :data="data" class="listview" ref="listview">
+  <scroll :data="data" class="listview" ref="listview" :listen-scroll="true" @scroll="scroll" :probeType="3">
     <ul>
       <li v-for="group in data" class="list-group" ref="listGroup">
         <h2 class="list-group-title">{{group.title}}</h2>
@@ -18,6 +18,10 @@
         </li>
       </ul>
     </div>
+
+    <div class="list-fixed" ref="fixed" v-show="fixedTitle">
+      <div class="fixed-title">{{fixedTitle}} </div>
+    </div>
   </scroll>
 </template>
 
@@ -25,15 +29,15 @@
   import Scroll from 'base/srcoll/scroll'
   import {getData} from 'common/js/dom'
 
-  const TITLE_HEIGHT = 30
-  const ANCHOR_HEIGHT = 18
+  const TITLE_HEIGHT = 30 //置顶头部高度
+  const ANCHOR_HEIGHT = 18//字母块高度
 
   export default {
     props: {
       data: {
         type: Array,
         default: []
-      },
+      }
     },
     components: {
       Scroll
@@ -43,22 +47,76 @@
         return this.data.map((group) => {
           return group.title.substr(0, 1)
         })
+      },
+      fixedTitle(){
+        if (this.scrollY > 0) {//到最头部 还在那
+          return ''
+        }
+        return this.data[this.currentIndex] ? this.data[this.currentIndex].title : ''
+      }
+    },
+    watch: {
+      data(){
+        //检测data变化计算高度
+        setTimeout(() => {
+          this.listHeight = []
+          let height=0
+          let itemList=this.$refs.listGroup
+          this.listHeight.push(height);//第一个0
+          for(let i=0;i<itemList.length;i++){
+              let item = itemList[i]
+              height += item.clientHeight //获取每一个的高度
+              this.listHeight.push(height)
+          }
+          console.log(this.listHeight)
+        }, 20)
+      },
+      scrollY(newY) {
+        //检测Y变化
+        const listHeight = this.listHeight
+        // 当滚动到顶部，newY>0
+        if (newY > 0) {
+          this.currentIndex = 0
+          return
+        }
+        // 在中间部分滚动
+        for(let i=0;i<listHeight.length-1;i++){
+          let height1 = listHeight[i]
+          let height2 = listHeight[i + 1]
+           if (-newY >= height1 && -newY < height2) {
+            this.currentIndex = i
+            this.diff = height2 + newY
+            return
+          }
+        }
+         // 当滚动到底部，且-newY大于最后一个元素的上限
+        this.currentIndex = listHeight.length - 2
+      },
+      diff(newVal) {
+        let fixedTop = (newVal > 0 && newVal < TITLE_HEIGHT) ? newVal - TITLE_HEIGHT : 0
+        if (this.fixedTop === fixedTop) {//在中间 无需要变化
+          return
+        }
+        this.fixedTop = fixedTop
+        this.$refs.fixed.style.transform = `translate3d(0,${fixedTop}px,0)`
       }
     },
     data() {
       return {
-        currentIndex: 0
+        currentIndex: 0,
+        scrollY:-1,
+        diff:-1
       }
     },
     created(){
        this.touch = {}
+       this.listHeight = []
     },
     methods: {
       onShortcutTouchStart(e) {
         let anchorIndex = getData(e.target, 'index')
         let firstTouch = e.touches[0]
         this.touch.y1 = firstTouch.pageY  //记录第一触碰的坐标
-        this.currentIndex===anchorIndex
         this.touch.anchorIndex=anchorIndex
         // this.$refs.listview.scrollToElement(this.$refs.listGroup[anchorIndex], 0)
         this._scrollTo(anchorIndex)
@@ -68,20 +126,26 @@
         this.touch.y2 = firstTouch.pageY
         let delta = (this.touch.y2 - this.touch.y1) / ANCHOR_HEIGHT | 0
         let anchorIndex = parseInt(this.touch.anchorIndex) + delta  //防止相加变字符串
-
+        this.currentIndex=anchorIndex
         this._scrollTo(anchorIndex)
       },
       _scrollTo(index) {
-        // if (!index && index !== 0) {
-        //   return
-        // }
-        // if (index < 0) {
-        //   index = 0
-        // } else if (index > this.listHeight.length - 2) {
-        //   index = this.listHeight.length - 2
-        // }
-        // this.scrollY = -this.listHeight[index]
+        // 指定滑动到的位置
+        if (!index && index !== 0) {//点击头尾没触发的位置
+          return
+        }
+        if (index < 0) {//头部
+          index = 0
+        } else if (index > this.listHeight.length - 2) {//超出 等于最后一个
+          index = this.listHeight.length - 2
+        }
+        this.currentIndex=index
+        this.scrollY = -this.listHeight[index]
         this.$refs.listview.scrollToElement(this.$refs.listGroup[index], 0)
+      },
+      scroll(pos) {
+        //传递滑动事件
+        this.scrollY = pos.y
       }
     },
   }
