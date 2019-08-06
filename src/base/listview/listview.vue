@@ -4,7 +4,7 @@
       <li v-for="group in data" class="list-group" ref="listGroup">
         <h2 class="list-group-title">{{group.title}}</h2>
         <uL>
-          <li  v-for="item in group.items" class="list-group-item">
+          <li  @click="selectItem(item)" v-for="item in group.items" class="list-group-item">
             <img class="avatar" v-lazy="item.avatar">
             <span class="name">{{item.name}}</span>
           </li>
@@ -22,11 +22,15 @@
     <div class="list-fixed" ref="fixed" v-show="fixedTitle">
       <div class="fixed-title">{{fixedTitle}} </div>
     </div>
+    <div v-show="!data.length" class="loading-container">
+      <loading></loading>
+    </div>
   </scroll>
 </template>
 
 <script>
   import Scroll from 'base/srcoll/scroll'
+  import Loading from 'base/loading/loading'
   import {getData} from 'common/js/dom'
 
   const TITLE_HEIGHT = 30 //置顶头部高度
@@ -40,7 +44,8 @@
       }
     },
     components: {
-      Scroll
+      Scroll,
+      Loading
     },
     computed: {
       shortcutList() {
@@ -146,6 +151,9 @@
       scroll(pos) {
         //传递滑动事件
         this.scrollY = pos.y
+      },
+      selectItem(item){
+        this.$emit("selectItem",item)
       }
     },
   }

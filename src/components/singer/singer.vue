@@ -1,7 +1,10 @@
 <template>
  <div class="singer" ref="singer">
-    <list-view  :data="singers" ref="list"></list-view>
+    <list-view  :data="singers" ref="list" @selectItem="todetail"></list-view>
+    <router-view></router-view>
   </div>
+
+
 </template>
 
 <script>
@@ -11,6 +14,7 @@
   import Scroll from 'base/srcoll/scroll'
   import ListView from 'base/listview/listview'
   import Singer from 'vo/singer.js'
+  import {mapMutations} from 'vuex'
 	import {
 		ERR_OK
 	} from 'api/config'
@@ -75,7 +79,17 @@
             return a.title.charCodeAt(0) - b.title.charCodeAt(0)
         })
         return hot.concat(ret)
-      }
+      },
+      todetail(singer){
+        this.$router.push({
+          path: `/singer/${singer.id}`
+        })
+        //设置singger
+        this.setSinger(singer)
+      },
+       ...mapMutations({
+        setSinger: 'SET_SINGER'
+      })
     },
   }
 </script>
