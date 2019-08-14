@@ -1,6 +1,9 @@
 <template>
-  <div class="player" v-show="playing">
-    <transition name="normal">
+  <div class="player" v-show="playlist.length>0">
+    <transition name="normal" @enter="enter"
+                @after-enter="afterEnter"
+                @leave="leave"
+                @after-leave="afterLeave">
       <div class="normal-player" v-show="fullScreen">
           <div class="background">
             <img width="100%" height="100%" :src="currentSong.image">
@@ -17,7 +20,7 @@
           <div class="middle">
              <div class="middle-l" ref="middleL">
                 <div class="cd-wrapper" ref="cdWrapper">
-                  <div class="cd" >
+                  <div class="cd" :class="this.playing ? 'play' : 'play pause'">
                     <img class="image" :src="currentSong.image">
                   </div>
                 </div>
@@ -41,18 +44,18 @@
               <span class="time time-r"></span>
             </div>
 
-            <div class="operators">
-              <div class="icon i-left" >
+            <div class="operators" >
+              <div class="icon i-left">
                 <i ></i>
               </div>
-              <div class="icon i-left" >
-                <i class="icon-prev"></i>
+              <div class="icon i-left" :class="disableCls">
+                <i class="icon-prev" @click="prev"></i>
               </div>
-              <div class="icon i-center" >
-                <i ></i>
+              <div class="icon i-center" :class="disableCls">
+                <i @click="togglePlaying" :class="this.playing ? 'icon-pause' : 'icon-play'"></i>
               </div>
-              <div class="icon i-right" >
-                <i class="icon-next"></i>
+              <div class="icon i-right" :class="disableCls">
+                <i class="icon-next" @click="next"></i>
               </div>
               <div class="icon i-right">
                 <i class="icon" ></i>
@@ -78,21 +81,46 @@
           </div>
       </div>
     </transition>
-    </div>
+    <audio ref="audio" :src="currentSong.url" @play="ready" @error="error" @end="end" @timeupdate="updateTime"></audio>
   </div>
 </template>
 
 <script>
 
   import {mapGetters, mapMutations, mapActions} from 'vuex'
+  import animations from 'create-keyframe-animation'
+  import {prefixStyle} from 'common/js/dom'
+
+  const transform = prefixStyle('transform')
   export default{
     computed: {
+      playIcon() {
+        return this.playing ? 'icon-pause' : 'icon-play'
+      },
+      disableCls(){
+        return this.songReady ? '' : 'disable'
+      },
       ...mapGetters([
         'currentIndex',
         'fullScreen',
         'playing',
-        'currentSong'
+        'currentSong',
+        'playlist'
       ])
+    },
+    watch:{
+      playing(newPlaying){
+        const audio = this.$refs.audio //获取播放器
+        this.$nextTick(()=>{
+          newPlaying ? audio.play() : audio.pause()
+        })
+      }
+    },
+    data(){
+      return{
+          songReady: false,
+          currentTime: 0
+      }
     },
     methods: {
       back() {
@@ -101,8 +129,113 @@
       open(){
         this.setFullScreen(true)
       },
+      formatTime(time,n){
+        //格式化日期
+      },
+      togglePlaying() {
+        //控制播放暂停
+        if (!this.songReady) {//还没准备好 就没反应
+          return
+        }
+        this.setPlayingState(!this.playing)
+      },
+      prev(){
+        if (!this.songReady) {//还没准备好 就没反应
+          return
+        }
+        let index = this.currentIndex - 1
+        if(index<0){
+          index=this.playlist.length-1
+        }
+        this.setCurrentIndex(index)
+        if (!this.playing) {//如果没播放 点击下一首上一首 实现播放
+            this.togglePlaying()
+        }
+      },
+      next(){
+        if (!this.songReady) {//还没准备好 就没反应
+          return
+        }
+        let index = this.currentIndex + 1
+        if(this.playlist<index){
+           index=0
+        }
+        this.setCurrentIndex(index)
+        if (!this.playing) {//如果没播放 点击下一首上一首 实现播放
+            this.togglePlaying()
+        }
+      },
+      ready(){
+          this.songReady=true
+      },
+      error(){
+           //加载完毕,可以点击
+          this.songReady=true;
+      },
+      end(){
+
+      },
+      updateTime(e){
+        this.currentTime = e.target.currentTime
+      },
+      enter(el, done){
+         const {x, y, scale} = this._getPosAndScale() //返回坐标 和缩放比例
+         let animation = {
+          0: {
+            transform: `translate3d(${x}px,${y}px,0) scale(${scale})`
+          },
+          60: {
+            transform: `translate3d(0,0,0) scale(1.1)`
+          },
+          100: {
+            transform: `translate3d(0,0,0) scale(1)`
+          }
+        }
+
+        animations.registerAnimation({
+          name: 'move',
+          animation,
+          presets: {
+            duration: 1000,
+            easing: 'linear'
+          }
+        })
+
+        animations.runAnimation(this.$refs.cdWrapper, 'move', done)
+      },
+      afterEnter(){
+        animations.unregisterAnimation('move')
+        this.$refs.cdWrapper.style.animation = ''
+      },
+      leave(el, done){
+        this.$refs.cdWrapper.style.transition = 'all 0.4s'
+        const {x, y, scale} = this._getPosAndScale()
+        this.$refs.cdWrapper.style[transform] = `translate3d(${x}px,${y}px,0) scale(${scale})`
+        this.$refs.cdWrapper.addEventListener('transitionend', done)
+      },
+      afterLeave(){
+        this.$refs.cdWrapper.style.transition = ''
+        this.$refs.cdWrapper.style[transform] = ''
+      },
+      _getPosAndScale() {
+          const targetWidth = 40  //小图标大小
+          const paddingLeft = 40  //左边距
+          const paddingBottom = 30  //地边距
+          const paddingTop = 80
+          const width = window.innerWidth * 0.8  //大圆宽度
+          const scale = targetWidth / width  //计算出缩放比例
+          const x = -(window.innerWidth / 2 - paddingLeft)  //从左到右
+          const y = window.innerHeight - paddingTop - width / 2 - paddingBottom
+          return {
+             x,
+             y,
+             scale
+        }
+      },
       ...mapMutations({
-        setFullScreen: 'SET_FULL_SCREEN'
+        setFullScreen: 'SET_FULL_SCREEN',
+        setPlayingState:'SET_PLAYING_STATE',
+        setCurrentIndex:'SET_CURRENT_INDEX'
       })
     },
   }
