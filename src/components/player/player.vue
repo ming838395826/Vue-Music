@@ -37,11 +37,11 @@
             </div>
 
             <div class="progress-wrapper">
-              <span class="time time-l"></span>
+              <span class="time time-l">{{formatTime(currentTime)}}</span>
               <div class="progress-bar-wrapper">
-
+                <progress-bar :percent="percent"></progress-bar>
               </div>
-              <span class="time time-r"></span>
+              <span class="time time-r">{{formatTime(currentSong.duration)}}</span>
             </div>
 
             <div class="operators" >
@@ -51,7 +51,7 @@
               <div class="icon i-left" :class="disableCls">
                 <i class="icon-prev" @click="prev"></i>
               </div>
-              <div class="icon i-center" :class="disableCls">
+              <div class="icon i-center" :class="disableCls" @percentChange="setPercent">
                 <i @click="togglePlaying" :class="this.playing ? 'icon-pause' : 'icon-play'"></i>
               </div>
               <div class="icon i-right" :class="disableCls">
@@ -90,15 +90,22 @@
   import {mapGetters, mapMutations, mapActions} from 'vuex'
   import animations from 'create-keyframe-animation'
   import {prefixStyle} from 'common/js/dom'
+  import progressBar from 'base/progress-bar/progress-bar'
 
   const transform = prefixStyle('transform')
   export default{
+    components: {
+      progressBar,
+    },
     computed: {
       playIcon() {
         return this.playing ? 'icon-pause' : 'icon-play'
       },
       disableCls(){
         return this.songReady ? '' : 'disable'
+      },
+      percent() {
+        return this.currentTime / this.currentSong.duration
       },
       ...mapGetters([
         'currentIndex',
@@ -129,8 +136,24 @@
       open(){
         this.setFullScreen(true)
       },
-      formatTime(time,n){
+      setPercent(percent){
+        console.log('测试')
+        this.currentTime=this.currentSong.duration*percent
+      },
+      formatTime(interval){
         //格式化日期
+        interval = interval | 0
+        const minute = interval / 60 | 0  //取整数
+        const second = this._pad(interval % 60)
+        return `${minute}:${second}`
+      },
+      _pad(num, n = 2) {
+        let len = num.toString().length
+        while (len < n) {
+          num = '0' + num
+          len++
+        }
+        return num
       },
       togglePlaying() {
         //控制播放暂停
