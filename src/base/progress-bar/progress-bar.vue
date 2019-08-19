@@ -1,5 +1,5 @@
 <template>
-  <div class="progress-bar" ref="progressBar">
+  <div class="progress-bar" ref="progressBar" @click="progressClick">
     <div class="bar-inner">
       <div class="progress" ref="progress"></div>
       <div class="progress-btn-wrapper" ref="progressBtn"
@@ -48,7 +48,6 @@
         this._offset(offsetWidth)
       },
       progressTouchEnd() {
-        // console.log('测试')
         this.touch.initiated = false
         this._triggerPercent()
       },
@@ -57,6 +56,13 @@
         const barWidth = this.$refs.progressBar.clientWidth - progressBtnWidth
         const percent = this.$refs.progress.clientWidth / barWidth
         this.$emit('percentChange', percent)
+      },
+      progressClick(e){
+        //获取某个元素相对于视窗的位置集合
+         const rect = this.$refs.progressBar.getBoundingClientRect()
+         const offsetWidth = e.pageX - rect.left  //长度
+         this._offset(offsetWidth)
+         this._triggerPercent()//改变当前进度
       }
     },
     watch: {
