@@ -156,6 +156,7 @@
         const audio = this.$refs.audio //获取播放器
         this.$nextTick(()=>{
           audio.play();
+          this.getLyric()
         })
       }
     },
@@ -163,7 +164,8 @@
       return{
           songReady: false,
           currentTime: 0,
-          radius:32
+          radius:32,
+          currentLyric:null 
       }
     },
     methods: {
@@ -224,6 +226,21 @@
           return item.id===this.currentSong.id
         })
         this.setCurrentIndex(index)
+      },
+      getLyric() {
+        this.currentSong.getLyric().then((lyric) => {
+          if (this.currentSong.lyric !== lyric) {
+            return
+          }
+          this.currentLyric = new Lyric(lyric, this.handleLyric)
+          if (this.playing) {
+            this.currentLyric.play()
+          }
+        }).catch(() => {
+          this.currentLyric = null
+          this.playingLyric = ''
+          this.currentLineNum = 0
+        })
       },
       prev(){
         if (!this.songReady) {//还没准备好 就没反应
